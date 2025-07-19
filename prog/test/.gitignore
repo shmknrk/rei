@@ -1,0 +1,7 @@
+*
+
+!.gitignore
+!Makefile
+!crt0.s
+!weak_main.s
+!link.ld

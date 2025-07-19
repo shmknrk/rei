@@ -1,0 +1,15 @@
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.mem
+*.dump
+
+*.log
+*.diff
+config.mk
+
+obj_dir/
+log/
+diff/

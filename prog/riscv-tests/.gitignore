@@ -1,0 +1,13 @@
+build/
+rv32*/
+rv64*/
+
+*.d
+*.o
+*.elf
+*.bin
+*.hex
+*.mem
+*.dump
+*.out
+*.out32
