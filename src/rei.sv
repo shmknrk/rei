@@ -89,8 +89,8 @@ module rei
     logic            csr_we         ;
     logic     [11:0] csr_addr       ;
     decoder decoder (
-        .ir_i                   (ir                     ), // input  wire logic [ILEN-1:0]
-        .is_ill_insn_o          (is_ill_insn            ), // output      logic
+        .ir_i                   (ir                     ), // input  var logic [ILEN-1:0]
+        .is_ill_insn_o          (is_ill_insn            ), // output var logic
         .src1_ctrl_o            (src1_ctrl              ), // output src1_ctrl_s
         .src2_ctrl_o            (src2_ctrl              ), // output src2_ctrl_s
         .sys_ctrl_o             (sys_ctrl               ), // output sys_ctrl_s
@@ -98,13 +98,13 @@ module rei
         .alu_ctrl_o             (alu_ctrl               ), // output alu_ctrl_s
         .csr_ctrl_o             (csr_ctrl               ), // output csr_ctrl_s
         .lsu_ctrl_o             (lsu_ctrl               ), // output lsu_ctrl_s
-        .rf_we_o                (rf_we                  ), // output     logic
-        .rd_o                   (rd                     ), // output     logic      [4:0]
-        .rs1_o                  (rs1                    ), // output     logic      [4:0]
-        .rs2_o                  (rs2                    ), // output     logic      [4:0]
-        .imm_o                  (imm                    ), // output     logic [XLEN-1:0]
-        .csr_we_o               (csr_we                 ), // output     logic
-        .csr_addr_o             (csr_addr               )  // output     logic     [11:0]
+        .rf_we_o                (rf_we                  ), // output var logic
+        .rd_o                   (rd                     ), // output var logic      [4:0]
+        .rs1_o                  (rs1                    ), // output var logic      [4:0]
+        .rs2_o                  (rs2                    ), // output var logic      [4:0]
+        .imm_o                  (imm                    ), // output var logic [XLEN-1:0]
+        .csr_we_o               (csr_we                 ), // output var logic
+        .csr_addr_o             (csr_addr               )  // output var logic     [11:0]
     );
 
     logic [XLEN-1:0] xrs1       ;
@@ -115,14 +115,14 @@ module rei
     assign Cm_rf_we = Cm_valid && ExCm_rf_we;
 
     regfile xregs (
-        .clk_i                  (clk_i                  ), // input  wire logic
-        .rs1_i                  (rs1                    ), // input  wire logic      [4:0]
-        .rs2_i                  (rs2                    ), // input  wire logic      [4:0]
-        .xrs1_o                 (xrs1                   ), // output      logic [XLEN-1:0]
-        .xrs2_o                 (xrs2                   ), // output      logic [XLEN-1:0]
-        .we_i                   (  Cm_rf_we             ), // input  wire logic
-        .rd_i                   (ExCm_rd                ), // input  wire logic      [4:0]
-        .wdata_i                (  Cm_rslt              )  // input  wire logic [XLEN-1:0]
+        .clk_i                  (clk_i                  ), // input  var logic
+        .rs1_i                  (rs1                    ), // input  var logic      [4:0]
+        .rs2_i                  (rs2                    ), // input  var logic      [4:0]
+        .xrs1_o                 (xrs1                   ), // output var logic [XLEN-1:0]
+        .xrs2_o                 (xrs2                   ), // output var logic [XLEN-1:0]
+        .we_i                   (  Cm_rf_we             ), // input  var logic
+        .rd_i                   (ExCm_rd                ), // input  var logic      [4:0]
+        .wdata_i                (  Cm_rslt              )  // input  var logic [XLEN-1:0]
     );
 
     logic            is_ill_acc ;
@@ -139,22 +139,22 @@ module rei
     csr_regfile #(
         .Hartid                 (Hartid                 )
     ) csr_regs (
-        .clk_i                  (clk_i                  ), // input  wire logic
-        .rst_i                  (rst                    ), // input  wire logic
+        .clk_i                  (clk_i                  ), // input  var logic
+        .rst_i                  (rst                    ), // input  var logic
         .priv_lvl_o             (priv_lvl               ), // output priv_lvl_e
         .csr_ctrl_i             (csr_ctrl               ), // input  csr_ctrl_s
-        .is_ill_acc_o           (is_ill_acc             ), // output      logic
-        .raddr_i                (csr_addr               ), // input  wire logic     [11:0]
-        .rdata_o                (csr_rdata              ), // output      logic [XLEN-1:0]
-        .we_i                   (ExCm_csr_we            ), // input  wire logic
-        .waddr_i                (ExCm_csr_addr          ), // input  wire logic     [11:0]
-        .wdata_i                (ExCm_csr_rslt          ), // input  wire logic [XLEN-1:0]
+        .is_ill_acc_o           (is_ill_acc             ), // output var logic
+        .raddr_i                (csr_addr               ), // input  var logic     [11:0]
+        .rdata_o                (csr_rdata              ), // output var logic [XLEN-1:0]
+        .we_i                   (ExCm_csr_we            ), // input  var logic
+        .waddr_i                (ExCm_csr_addr          ), // input  var logic     [11:0]
+        .wdata_i                (ExCm_csr_rslt          ), // input  var logic [XLEN-1:0]
         .exc_i                  (  Cm_exc               ), // input  exc_s
-        .pc_i                   (ExCm_pc                ), // input  wire logic [XLEN-1:0]
-        .tvec_o                 (tvec                   ), // output      logic [XLEN-1:0]
-        .mret_i                 (  Cm_mret              ), // input  wire logic
-        .eret_o                 (eret                   ), // output      logic
-        .epc_o                  (epc                    )  // output      logic [XLEN-1:0]
+        .pc_i                   (ExCm_pc                ), // input  var logic [XLEN-1:0]
+        .tvec_o                 (tvec                   ), // output var logic [XLEN-1:0]
+        .mret_i                 (  Cm_mret              ), // input  var logic
+        .eret_o                 (eret                   ), // output var logic
+        .epc_o                  (epc                    )  // output var logic [XLEN-1:0]
     );
 
     logic [XLEN-1:0] src1               ;
@@ -202,29 +202,29 @@ module rei
     logic [XLEN-1:0] bru_rslt   ;
     bru bru (
         .bru_ctrl_i             (bru_ctrl               ), // input  bru_ctrl_s
-        .src1_i                 (src1                   ), // input  wire logic [XLEN-1:0]
-        .src2_i                 (src2                   ), // input  wire logic [XLEN-1:0]
-        .pc_i                   (pc                     ), // input  wire logic [XLEN-1:0]
-        .imm_i                  (imm                    ), // input  wire logic [XLEN-1:0]
-        .tkn_o                  (tkn                    ), // output      logic
-        .tkn_pc_o               (tkn_pc                 ), // output      logic [XLEN-1:0]
-        .rslt_o                 (bru_rslt               )  // output      logic [XLEN-1:0]
+        .src1_i                 (src1                   ), // input  var logic [XLEN-1:0]
+        .src2_i                 (src2                   ), // input  var logic [XLEN-1:0]
+        .pc_i                   (pc                     ), // input  var logic [XLEN-1:0]
+        .imm_i                  (imm                    ), // input  var logic [XLEN-1:0]
+        .tkn_o                  (tkn                    ), // output var logic
+        .tkn_pc_o               (tkn_pc                 ), // output var logic [XLEN-1:0]
+        .rslt_o                 (bru_rslt               )  // output var logic [XLEN-1:0]
     );
 
     logic [XLEN-1:0] alu_rslt   ;
     alu alu (
         .alu_ctrl_i             (alu_ctrl               ), // input  alu_ctrl_s
-        .src1_i                 (src1                   ), // input  wire logic [XLEN-1:0]
-        .src2_i                 (src2                   ), // input  wire logic [XLEN-1:0]
-        .rslt_o                 (alu_rslt               )  // output      logic [XLEN-1:0]
+        .src1_i                 (src1                   ), // input  var logic [XLEN-1:0]
+        .src2_i                 (src2                   ), // input  var logic [XLEN-1:0]
+        .rslt_o                 (alu_rslt               )  // output var logic [XLEN-1:0]
     );
 
     logic [XLEN-1:0] csr_rslt   ;
     csralu csralu (
         .csr_ctrl_i             (csr_ctrl               ), // input  csr_ctrl_s
-        .csr_i                  (csr_rdata              ), // input  wire logic [XLEN-1:0]
-        .src1_i                 (src1                   ), // input  wire logic [XLEN-1:0]
-        .rslt_o                 (csr_rslt               )  // output      logic [XLEN-1:0]
+        .csr_i                  (csr_rdata              ), // input  var logic [XLEN-1:0]
+        .src1_i                 (src1                   ), // input  var logic [XLEN-1:0]
+        .rslt_o                 (csr_rslt               )  // output var logic [XLEN-1:0]
     );
 
     logic [XLEN-1:0] rslt   ;
@@ -251,13 +251,13 @@ module rei
 
     logic [XLEN-1:0] Cm_lsu_rslt;
     lsu lsu (
-        .clk_i                  (clk_i                  ), // input  wire logic
+        .clk_i                  (clk_i                  ), // input  var logic
         .lsu_ctrl_i             (lsu_ctrl               ), // input  lsu_ctrl_s
-        .src1_i                 (src1                   ), // input  wire logic [XLEN-1:0]
-        .src2_i                 (src2                   ), // input  wire logic [XLEN-1:0]
-        .imm_i                  (imm                    ), // input  wire logic [XLEN-1:0]
+        .src1_i                 (src1                   ), // input  var logic [XLEN-1:0]
+        .src2_i                 (src2                   ), // input  var logic [XLEN-1:0]
+        .imm_i                  (imm                    ), // input  var logic [XLEN-1:0]
         .dbus_if                (dbus_if                ), // dbus_if.mgr
-        .rslt_o                 (  Cm_lsu_rslt          )  // output      logic [XLEN-1:0]
+        .rslt_o                 (  Cm_lsu_rslt          )  // output var logic [XLEN-1:0]
     );
 
     // commit
