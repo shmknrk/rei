@@ -28,7 +28,7 @@ module top;
     // dut
     soc soc (
         .clk_i      (clk            ), // input var logic
-        .rst_i      (!rst_n         )  // input var logic
+        .rst_ni     (rst_n          )  // input var logic
     );
 
     initial $readmemh(get_filename_from_args("imem_file"), soc.imem.ram);

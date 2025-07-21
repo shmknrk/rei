@@ -5,19 +5,15 @@ module soc
     import rei_pkg::*;
 (
     input  var logic clk_i  ,
-    input  var logic rst_i
+    input  var logic rst_ni
 );
 
     logic rst;
-`ifdef SYNTHESIS
     synchronizer sync_rst (
         .clk_i          (clk_i                  ), // input  var logic
-        .d_i            (rst_i                  ), // input  var logic
+        .d_i            (!rst_ni                ), // input  var logic
         .q_o            (rst                    )  // output var logic
     );
-`else
-    assign rst  = rst_i ;
-`endif
 
     ibus_if #(IBUS_ADDR_WIDTH, IBUS_DATA_WIDTH) ibus_if(clk_i);
     dbus_if #(DBUS_ADDR_WIDTH, DBUS_DATA_WIDTH) dbus_if(clk_i);
