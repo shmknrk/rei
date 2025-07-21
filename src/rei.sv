@@ -153,10 +153,10 @@ module rei
         .wdata_i                (  Cm_rslt              )  // input  var logic [XLEN-1:0]
     );
 
-    logic            Id_is_ill_acc  ;
-    logic [XLEN-1:0] Id_csr_rdata   ;
-    logic            Cm_csr_we      ;
-    logic            Cm_mret        ;
+    logic            Id_is_ill_csr_acc  ;
+    logic [XLEN-1:0] Id_csr_rdata       ;
+    logic            Cm_csr_we          ;
+    logic            Cm_mret            ;
 
     assign Cm_csr_we    =   Cm_valid && ExCm_csr_we     ;
     assign Cm_exc.valid = ExCm_valid && ExCm_exc.valid  ;
@@ -171,7 +171,7 @@ module rei
         .rst_i                  (rst_i                  ), // input  var logic
         .priv_lvl_o             (priv_lvl               ), // output priv_lvl_e
         .csr_ctrl_i             (  Id_csr_ctrl          ), // input  csr_ctrl_s
-        .is_ill_acc_o           (  Id_is_ill_acc        ), // output var logic
+        .is_ill_acc_o           (  Id_is_ill_csr_acc    ), // output var logic
         .raddr_i                (  Id_csr_addr          ), // input  var logic     [11:0]
         .rdata_o                (  Id_csr_rdata         ), // output var logic [XLEN-1:0]
         .we_i                   (ExCm_csr_we            ), // input  var logic
@@ -211,7 +211,7 @@ module rei
         Id_exc.cause    = 'h0   ;
         Id_exc.tval     = 'h0   ;
         if (Id_valid && !Id_exc.valid) begin
-            if (Id_is_ill_insn || Id_is_ill_acc) begin // illegal instruction
+            if (Id_is_ill_insn || Id_is_ill_csr_acc) begin // illegal instruction
                 Id_exc.valid    = 1'b1                                          ;
                 Id_exc.cause    = CAUSE_ILLEGAL_INSTRUCTION                     ;
                 Id_exc.tval     = {{XLEN-ILEN{1'b0}}, Id_ir}                    ;
