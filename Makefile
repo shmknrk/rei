@@ -10,7 +10,7 @@ diff_dir            := $(log_dir)/diff
 
 # configuration for the program
 xlen                := 64
-riscv_arch          := rv$(xlen)i_zicntr_zicsr_zifencei
+riscv_arch          := rv$(xlen)im_zicntr_zicsr_zifencei
 riscv_abi           := $(if $(filter 64,$(xlen)),lp64,ilp32)
 
 #===================================================================================================
@@ -45,6 +45,8 @@ verilator           ?= verilator
 verilator_flags     += --binary
 verilator_flags     += --prefix $(topname)
 verilator_flags     += --top-module $(topmodule)
+verilator_flags     += --Wno-WIDTHEXPAND
+
 verilator_flags     += $(if $(TRACE_FST_FILE),--trace-fst --trace-structs)
 verilator_flags     += $(addprefix -I,$(inc_dirs))
 
@@ -140,8 +142,8 @@ else
 		--no-print-directory
 endif
 
-$(riscv-tests_dir)/$1:
-	make -C $(riscv-tests_dir) $1 --no-print-directory
+$$(riscv-tests_dir)/$1:
+	make -C $$(riscv-tests_dir) $1 --no-print-directory
 
 endef
 
@@ -149,7 +151,7 @@ endef
 # riscv-tests
 #---------------------------------------------------------------------------------------------------
 # ma_data fence_i
-rv64ui_sc_tests = \
+rv64ui_sc_tests     := \
 	add addi addiw addw \
 	and andi \
 	auipc \
@@ -167,9 +169,15 @@ rv64ui_sc_tests = \
 	sub subw \
 	xor xori \
 
+rv64um_sc_tests     := \
+	div divu divuw divw \
+	mul mulh mulhsu mulhu mulw \
+	rem remu remuw remw \
+
 .PHONY: isa
-isa: rv64ui_test
+isa: rv64ui_test rv64um_test
 $(eval $(call riscv-tests-template,rv64ui,2000))
+$(eval $(call riscv-tests-template,rv64um,2000))
 
 #===================================================================================================
 # docker

@@ -53,7 +53,7 @@ module top;
     final if (|commit_log_fd) $fclose(commit_log_fd);
 
     always_ff @(cb) begin
-        if (soc.rei.Cm_valid) begin
+        if (!soc.rei.stall && soc.rei.Cm_valid) begin
             spike_commit_log (
                 .fd         (commit_log_fd          ), // int
                 .hartid     (soc.rei.Hartid         ), // logic   [XLEN-1:0]

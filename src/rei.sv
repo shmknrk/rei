@@ -34,6 +34,7 @@ module rei
     bru_ctrl_s         IdEx_bru_ctrl        ;
     alu_ctrl_s         IdEx_alu_ctrl        ;
     csr_ctrl_s         IdEx_csr_ctrl        ;
+    mul_ctrl_s         IdEx_mul_ctrl        ;
     lsu_ctrl_s         IdEx_lsu_ctrl        ;
     logic              IdEx_csr_we          ;
     logic       [11:0] IdEx_csr_addr        ;
@@ -66,15 +67,19 @@ module rei
     logic   [XLEN-1:0] ExCm_csr_rslt        ;
 
     // controller
-    logic            Cm_bmisp   ;
+    logic Cm_bmisp      ;
     assign Cm_bmisp = ExCm_valid && ExCm_tkn;
 
-    logic            Id_valid   ;
-    logic            Ex_valid   ;
-    logic            Cm_valid   ;
-    assign Id_valid = (rst_i || Cm_bmisp || ExCm_valid && (ExCm_exc.valid || ExCm_mret)) ? 1'b0 : 1'b1        ;
-    assign Ex_valid = (rst_i || Cm_bmisp || ExCm_valid && (ExCm_exc.valid || ExCm_mret)) ? 1'b0 : IdEx_valid  ;
-    assign Cm_valid = (rst_i             || ExCm_valid &&  ExCm_exc.valid              ) ? 1'b0 : ExCm_valid  ;
+    logic Id_valid      ;
+    logic Ex_valid      ;
+    logic Cm_valid      ;
+    assign Id_valid = (Cm_bmisp || ExCm_valid && (ExCm_exc.valid || ExCm_mret)) ? 1'b0 : 1'b1       ;
+    assign Ex_valid = (Cm_bmisp || ExCm_valid && (ExCm_exc.valid || ExCm_mret)) ? 1'b0 : IdEx_valid ;
+    assign Cm_valid = (            ExCm_valid &&  ExCm_exc.valid              ) ? 1'b0 : ExCm_valid ;
+
+    logic stall     ;
+    logic mul_stall ;
+    assign stall    = mul_stall ;
 
     // instruction fetch
     logic [XLEN-1:0] npc        ;
@@ -84,17 +89,17 @@ module rei
     logic [XLEN-1:0] tvec       ;
 
     assign npc = (       rst_i) ? RESET_VECTOR :
+                 (       stall) ? pc           :
                  (        eret) ? epc          :
                  (Cm_exc.valid) ? tvec         :
                  (    Cm_bmisp) ? ExCm_tkn_pc  :
                                   pc + 4       ;
 
-    always_ff @(posedge clk_i) pc <= npc;
-
     assign ibus_if.araddr   = npc           ;
 
     always_ff @(posedge clk_i) begin
-        IfId_pc     <= npc      ;
+        pc      <= npc  ;
+        IfId_pc <= npc  ;
     end
 
     // instruction decode
@@ -108,6 +113,7 @@ module rei
     bru_ctrl_s       Id_bru_ctrl    ;
     alu_ctrl_s       Id_alu_ctrl    ;
     csr_ctrl_s       Id_csr_ctrl    ;
+    mul_ctrl_s       Id_mul_ctrl    ;
     lsu_ctrl_s       Id_lsu_ctrl    ;
     logic            Id_rf_we       ;
     logic      [4:0] Id_rd          ;
@@ -125,6 +131,7 @@ module rei
         .bru_ctrl_o             (  Id_bru_ctrl          ), // output bru_ctrl_s
         .alu_ctrl_o             (  Id_alu_ctrl          ), // output alu_ctrl_s
         .csr_ctrl_o             (  Id_csr_ctrl          ), // output csr_ctrl_s
+        .mul_ctrl_o             (  Id_mul_ctrl          ), // output mul_ctrl_s
         .lsu_ctrl_o             (  Id_lsu_ctrl          ), // output lsu_ctrl_s
         .rf_we_o                (  Id_rf_we             ), // output var logic
         .rd_o                   (  Id_rd                ), // output var logic      [4:0]
@@ -140,7 +147,7 @@ module rei
     logic            Cm_rf_we   ;
     logic [XLEN-1:0] Cm_rslt    ;
 
-    assign Cm_rf_we = Cm_valid && ExCm_rf_we;
+    assign Cm_rf_we = Cm_valid && ExCm_rf_we && !stall  ;
 
     regfile xregs (
         .clk_i                  (clk_i                  ), // input  var logic
@@ -169,6 +176,7 @@ module rei
     ) csr_regs (
         .clk_i                  (clk_i                  ), // input  var logic
         .rst_i                  (rst_i                  ), // input  var logic
+        .stall_i                (stall                  ), // input  var logic
         .priv_lvl_o             (priv_lvl               ), // output priv_lvl_e
         .csr_ctrl_i             (  Id_csr_ctrl          ), // input  csr_ctrl_s
         .is_ill_acc_o           (  Id_is_ill_csr_acc    ), // output var logic
@@ -230,25 +238,32 @@ module rei
     end
 
     always_ff @(posedge clk_i) begin
-        IdEx_valid              <=   Id_valid           ;
-        IdEx_pc                 <= IfId_pc              ;
-        IdEx_ir                 <=   Id_ir              ; // debug
-        IdEx_exc                <=   Id_exc             ;
-        IdEx_mret               <=   Id_sys_ctrl.is_mret;
-        IdEx_bru_ctrl           <=   Id_bru_ctrl        ;
-        IdEx_alu_ctrl           <=   Id_alu_ctrl        ;
-        IdEx_csr_ctrl           <=   Id_csr_ctrl        ;
-        IdEx_lsu_ctrl           <=   Id_lsu_ctrl        ;
-        IdEx_csr_we             <=   Id_csr_we          ;
-        IdEx_csr_addr           <=   Id_csr_addr        ;
-        IdEx_csr_rdata          <=   Id_csr_rdata       ;
-        IdEx_rf_we              <=   Id_rf_we           ;
-        IdEx_rd                 <=   Id_rd              ;
-        IdEx_fwd_rs1_Cm_to_Ex   <=   Id_fwd_rs1_Cm_to_Ex;
-        IdEx_fwd_rs2_Cm_to_Ex   <=   Id_fwd_rs2_Cm_to_Ex;
-        IdEx_src1               <=   Id_src1            ;
-        IdEx_src2               <=   Id_src2            ;
-        IdEx_imm                <=   Id_imm             ;
+        if (rst_i) begin
+            IdEx_valid              <=   'h0                ;
+        end else if (!stall) begin
+            IdEx_valid              <=   Id_valid           ;
+        end
+        if (!stall) begin
+            IdEx_pc                 <= IfId_pc              ;
+            IdEx_ir                 <=   Id_ir              ; // debug
+            IdEx_exc                <=   Id_exc             ;
+            IdEx_mret               <=   Id_sys_ctrl.is_mret;
+            IdEx_bru_ctrl           <=   Id_bru_ctrl        ;
+            IdEx_alu_ctrl           <=   Id_alu_ctrl        ;
+            IdEx_csr_ctrl           <=   Id_csr_ctrl        ;
+            IdEx_mul_ctrl           <=   Id_mul_ctrl        ;
+            IdEx_lsu_ctrl           <=   Id_lsu_ctrl        ;
+            IdEx_csr_we             <=   Id_csr_we          ;
+            IdEx_csr_addr           <=   Id_csr_addr        ;
+            IdEx_csr_rdata          <=   Id_csr_rdata       ;
+            IdEx_rf_we              <=   Id_rf_we           ;
+            IdEx_rd                 <=   Id_rd              ;
+            IdEx_fwd_rs1_Cm_to_Ex   <=   Id_fwd_rs1_Cm_to_Ex;
+            IdEx_fwd_rs2_Cm_to_Ex   <=   Id_fwd_rs2_Cm_to_Ex;
+            IdEx_src1               <=   Id_src1            ;
+            IdEx_src2               <=   Id_src2            ;
+            IdEx_imm                <=   Id_imm             ;
+        end
     end
 
     // execution
@@ -291,29 +306,51 @@ module rei
     assign Ex_rslt  = Ex_bru_rslt | Ex_alu_rslt | IdEx_csr_rdata;
 
     always_ff @(posedge clk_i) begin
-        ExCm_valid      <=   Ex_valid       ;
-        ExCm_pc         <= IdEx_pc          ;
-        ExCm_ir         <= IdEx_ir          ; // debug
-        ExCm_exc        <= IdEx_exc         ;
-        ExCm_mret       <= IdEx_mret        ;
-        ExCm_tkn        <=   Ex_tkn         ;
-        ExCm_tkn_pc     <=   Ex_tkn_pc      ;
-        ExCm_rf_we      <= IdEx_rf_we       ;
-        ExCm_rd         <= IdEx_rd          ;
-        ExCm_rslt       <=   Ex_rslt        ;
-        ExCm_addr       <= dbus_if.addr     ; // debug
-        ExCm_wvalid     <= dbus_if.wvalid   ; // debug
-        ExCm_wdata      <= dbus_if.wdata    ; // debug
-        ExCm_wstrb      <= dbus_if.wstrb    ; // debug
-        ExCm_arvalid    <= dbus_if.arvalid  ; // debug
-        ExCm_csr_we     <= IdEx_csr_we      ;
-        ExCm_csr_addr   <= IdEx_csr_addr    ;
-        ExCm_csr_rslt   <=   Ex_csr_rslt    ;
+        if (rst_i) begin
+            ExCm_valid      <= 'h0              ;
+        end else if (!stall) begin
+            ExCm_valid      <=   Ex_valid       ;
+        end
+        if (!stall) begin
+            ExCm_pc         <= IdEx_pc          ;
+            ExCm_ir         <= IdEx_ir          ; // debug
+            ExCm_exc        <= IdEx_exc         ;
+            ExCm_mret       <= IdEx_mret        ;
+            ExCm_tkn        <=   Ex_tkn         ;
+            ExCm_tkn_pc     <=   Ex_tkn_pc      ;
+            ExCm_rf_we      <= IdEx_rf_we       ;
+            ExCm_rd         <= IdEx_rd          ;
+            ExCm_rslt       <=   Ex_rslt        ;
+            ExCm_addr       <= dbus_if.addr     ; // debug
+            ExCm_wvalid     <= dbus_if.wvalid   ; // debug
+            ExCm_wdata      <= dbus_if.wdata    ; // debug
+            ExCm_wstrb      <= dbus_if.wstrb    ; // debug
+            ExCm_arvalid    <= dbus_if.arvalid  ; // debug
+            ExCm_csr_we     <= IdEx_csr_we      ;
+            ExCm_csr_addr   <= IdEx_csr_addr    ;
+            ExCm_csr_rslt   <=   Ex_csr_rslt    ;
+        end
     end
 
-    logic [XLEN-1:0] Cm_lsu_rslt;
+    logic [XLEN-1:0] Cm_mul_rslt;
+    multiplier multiplier (
+        .clk_i                  (clk_i                  ), // input  var logic
+        .valid_i                (  Ex_valid             ), // input  var logic
+        .stall_o                (  mul_stall            ), // output var logic
+        .mul_ctrl_i             (IdEx_mul_ctrl          ), // input  mul_ctrl_s
+        .src1_i                 (  Ex_src1              ), // input  var logic [XLEN-1:0]
+        .src2_i                 (  Ex_src2              ), // input  var logic [XLEN-1:0]
+        .rslt_o                 (  Cm_mul_rslt          )  // output var logic [XLEN-1:0]
+    );
+
+    logic Ex_lsu_cmd_valid  ;
+    assign Ex_lsu_cmd_valid = Ex_valid && !mul_stall;
+
+    logic [XLEN-1:0] Cm_lsu_rslt    ;
     lsu lsu (
         .clk_i                  (clk_i                  ), // input  var logic
+        .valid_i                (  Ex_lsu_cmd_valid     ), // input  var logic
+        .stall_i                (  mul_stall            ), // input  var logic
         .lsu_ctrl_i             (IdEx_lsu_ctrl          ), // input  lsu_ctrl_s
         .src1_i                 (  Ex_src1              ), // input  var logic [XLEN-1:0]
         .src2_i                 (  Ex_src2              ), // input  var logic [XLEN-1:0]
@@ -323,7 +360,7 @@ module rei
     );
 
     // commit
-    assign Cm_rslt  = ExCm_rslt | Cm_lsu_rslt   ;
+    assign Cm_rslt  = ExCm_rslt | Cm_mul_rslt | Cm_lsu_rslt ;
 
 endmodule
 

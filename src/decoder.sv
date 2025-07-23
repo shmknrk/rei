@@ -12,6 +12,7 @@ module decoder
     output bru_ctrl_s           bru_ctrl_o      ,
     output alu_ctrl_s           alu_ctrl_o      ,
     output csr_ctrl_s           csr_ctrl_o      ,
+    output mul_ctrl_s           mul_ctrl_o      ,
     output lsu_ctrl_s           lsu_ctrl_o      ,
     output var logic            rf_we_o         ,
     output var logic      [4:0] rd_o            ,
@@ -56,6 +57,7 @@ module decoder
         bru_ctrl_o          = 'h0   ;
         alu_ctrl_o          = 'h0   ;
         csr_ctrl_o          = 'h0   ;
+        mul_ctrl_o          = 'h0   ;
         lsu_ctrl_o          = 'h0   ;
 
         unique case (opcode[1:0])
@@ -188,6 +190,10 @@ module decoder
                             10'b0100000101  : begin alu_ctrl_o.is_signed = 1'b1;                            alu_ctrl_o.is_sr   = 1'b1; end // sra
                             10'b0000000110  : begin                              alu_ctrl_o.is_xor  = 1'b1; alu_ctrl_o.is_and  = 1'b1; end // or
                             10'b0000000111  : begin                                                         alu_ctrl_o.is_and  = 1'b1; end // and
+                            10'b0000001000  : begin mul_ctrl_o.is_mul = 1'b1;                                                                                                end // mul
+                            10'b0000001001  : begin mul_ctrl_o.is_mul = 1'b1; mul_ctrl_o.is_src1_signed = 1'b1; mul_ctrl_o.is_src2_signed = 1'b1; mul_ctrl_o.is_high = 1'b1; end // mulh
+                            10'b0000001010  : begin mul_ctrl_o.is_mul = 1'b1; mul_ctrl_o.is_src1_signed = 1'b1;                                   mul_ctrl_o.is_high = 1'b1; end // mulhsu
+                            10'b0000001011  : begin mul_ctrl_o.is_mul = 1'b1;                                                                     mul_ctrl_o.is_high = 1'b1; end // mulhu
                             default         : is_ill_insn_o = 1'b1  ;
                         endcase
                     end
@@ -214,11 +220,12 @@ module decoder
                     5'b01110: begin // OP-32
                         alu_ctrl_o.is_word  = 1'b1  ;
                         unique case ({funct7, funct3})
-                            10'b0000000000  : begin                              alu_ctrl_o.is_add = 1'b1; end // addw
-                            10'b0100000000  : begin alu_ctrl_o.is_neg    = 1'b1; alu_ctrl_o.is_add = 1'b1; end // subw
-                            10'b0000000001  : begin                              alu_ctrl_o.is_sl  = 1'b1; end // sllw
-                            10'b0000000101  : begin                              alu_ctrl_o.is_sr  = 1'b1; end // srlw
-                            10'b0100000101  : begin alu_ctrl_o.is_signed = 1'b1; alu_ctrl_o.is_sr  = 1'b1; end // sraw
+                            10'b0000000000  : begin                              alu_ctrl_o.is_add  = 1'b1; end // addw
+                            10'b0100000000  : begin alu_ctrl_o.is_neg    = 1'b1; alu_ctrl_o.is_add  = 1'b1; end // subw
+                            10'b0000000001  : begin                              alu_ctrl_o.is_sl   = 1'b1; end // sllw
+                            10'b0000000101  : begin                              alu_ctrl_o.is_sr   = 1'b1; end // srlw
+                            10'b0100000101  : begin alu_ctrl_o.is_signed = 1'b1; alu_ctrl_o.is_sr   = 1'b1; end // sraw
+                            10'b0000001000  : begin mul_ctrl_o.is_mul    = 1'b1; mul_ctrl_o.is_word = 1'b1; end // mul
                             default         : is_ill_insn_o = 1'b1  ;
                         endcase
                     end

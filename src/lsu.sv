@@ -5,6 +5,8 @@ module lsu
     import rei_pkg::*;
 (
     input  var logic            clk_i       ,
+    input  var logic            valid_i     ,
+    input  var logic            stall_i     ,
     input  lsu_ctrl_s           lsu_ctrl_i  ,
     input  var logic [XLEN-1:0] src1_i      ,
     input  var logic [XLEN-1:0] src2_i      ,
@@ -13,15 +15,15 @@ module lsu
     output var logic [XLEN-1:0] rslt_o
 );
 
-    assign dbus_if.wvalid   = lsu_ctrl_i.is_store   ;
-    assign dbus_if.arvalid  = lsu_ctrl_i.is_load    ;
+    assign dbus_if.wvalid   = valid_i && lsu_ctrl_i.is_store;
+    assign dbus_if.arvalid  = valid_i && lsu_ctrl_i.is_load ;
 
     // addr
     logic [XLEN-1:0] addr   ;
-    assign addr             = src1_i + imm_i        ;
-    assign dbus_if.addr     = addr                  ;
-    assign dbus_if.awaddr   = addr                  ;
-    assign dbus_if.araddr   = addr                  ;
+    assign addr             = src1_i + imm_i;
+    assign dbus_if.addr     = addr          ;
+    assign dbus_if.awaddr   = addr          ;
+    assign dbus_if.araddr   = addr          ;
 
     localparam OFFSET_WIDTH = $clog2(XBYTES);
     logic [OFFSET_WIDTH-1:0] dbus_offset_q, dbus_offset_d   ;
@@ -51,8 +53,10 @@ module lsu
 
     lsu_ctrl_s lsu_ctrl_q;
     always_ff @(posedge clk_i) begin
-        dbus_offset_q   <= dbus_offset_d;
-        lsu_ctrl_q      <= lsu_ctrl_i   ;
+        if (!stall_i) begin
+            dbus_offset_q   <= dbus_offset_d;
+            lsu_ctrl_q      <= lsu_ctrl_i   ;
+        end
     end
 
     logic     [63:0] ld_rdata   ;

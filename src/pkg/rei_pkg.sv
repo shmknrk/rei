@@ -6,20 +6,16 @@
 package rei_pkg;
 
     // cpu
-    localparam bit              RVM             = 1'b0                              ;
-    localparam bit              RVA             = 1'b0                              ;
-    localparam bit              RVC             = 1'b0                              ;
-    localparam bit              RVS             = 1'b0                              ;
-    localparam bit              RVU             = 1'b0                              ;
-
     localparam                  ILEN            = 32                                ;
-    localparam                  IALIGN          = (RVC) ? 16 : 32                   ;
+    localparam                  IALIGN          = 32                                ;
     localparam                  XLEN            = 64                                ;
 
     localparam                  XBYTES          = XLEN/8                            ;
 
     localparam                  VLEN            = (XLEN==64) ? 39 : 32              ; // virtual  address length
     localparam                  PLEN            = (XLEN==64) ? 56 : 34              ; // physical address length
+
+    localparam                  MUL_PIPE_DEPTH  = 1                                 ; // > 0
 
     // soc
     localparam logic [XLEN-1:0] RESET_VECTOR    = 64'h80000000                      ;
@@ -217,6 +213,14 @@ package rei_pkg;
         logic is_set        ;
         logic is_clear      ;
     } csr_ctrl_s;
+
+    typedef struct packed {
+        logic is_mul        ;
+        logic is_src1_signed;
+        logic is_src2_signed;
+        logic is_high       ;
+        logic is_word       ;
+    } mul_ctrl_s;
 
     typedef struct packed {
         logic is_signed     ;

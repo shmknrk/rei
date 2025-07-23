@@ -10,6 +10,7 @@ module csr_regfile
 ) (
     input  var logic            clk_i       ,
     input  var logic            rst_i       ,
+    input  var logic            stall_i     ,
     output priv_lvl_e           priv_lvl_o  ,
     input  csr_ctrl_s           csr_ctrl_i  ,
     output var logic            is_ill_acc_o,
@@ -145,7 +146,7 @@ module csr_regfile
             mepc_q      <= 'h0          ;
             mcause_q    <= 'h0          ;
             mtval_q     <= 'h0          ;
-        end else begin
+        end else if (!stall_i) begin
             priv_lvl_q  <= priv_lvl_d   ;
             mstatus_q   <= mstatus_d    ;
             mie_q       <= mie_d        ;
