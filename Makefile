@@ -169,7 +169,7 @@ rv64ui_sc_tests = \
 
 .PHONY: isa
 isa: rv64ui_test
-$(eval $(call riscv-tests-template,rv64ui,2000))
+$(eval $(call riscv-tests-template,rv64ui,3000))
 
 #===================================================================================================
 # docker

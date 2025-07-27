@@ -40,8 +40,6 @@ module rei
     logic   [XLEN-1:0] IdEx_csr_rdata       ;
     logic              IdEx_rf_we           ;
     logic        [4:0] IdEx_rd              ;
-    logic              IdEx_fwd_rs1_Cm_to_Ex;
-    logic              IdEx_fwd_rs2_Cm_to_Ex;
     logic   [XLEN-1:0] IdEx_src1            ;
     logic   [XLEN-1:0] IdEx_src2            ;
     logic   [XLEN-1:0] IdEx_imm             ;
@@ -66,15 +64,24 @@ module rei
     logic   [XLEN-1:0] ExCm_csr_rslt        ;
 
     // controller
-    logic            Cm_bmisp   ;
+    logic Cm_bmisp  ;
     assign Cm_bmisp = ExCm_valid && ExCm_tkn;
 
-    logic            Id_valid   ;
-    logic            Ex_valid   ;
-    logic            Cm_valid   ;
-    assign Id_valid = (rst_i || Cm_bmisp || ExCm_valid && (ExCm_exc.valid || ExCm_mret)) ? 1'b0 : 1'b1        ;
-    assign Ex_valid = (rst_i || Cm_bmisp || ExCm_valid && (ExCm_exc.valid || ExCm_mret)) ? 1'b0 : IdEx_valid  ;
-    assign Cm_valid = (rst_i             || ExCm_valid &&  ExCm_exc.valid              ) ? 1'b0 : ExCm_valid  ;
+    logic Id_ready      ;
+    logic Id_rd_ready   ;
+    logic Id_rs1_ready  ;
+    logic Id_rs2_ready  ;
+    assign Id_ready = Id_rd_ready && Id_rs1_ready && Id_rs2_ready ;
+
+    logic frontend_stall;
+    assign frontend_stall   = !Id_ready ;
+
+    logic Id_valid      ;
+    logic Ex_valid      ;
+    logic Cm_valid      ;
+    assign Id_valid = (rst_i || Cm_bmisp || ExCm_valid && (ExCm_exc.valid || ExCm_mret) || !Id_ready) ? 1'b0 : 1'b1        ;
+    assign Ex_valid = (rst_i || Cm_bmisp || ExCm_valid && (ExCm_exc.valid || ExCm_mret)             ) ? 1'b0 : IdEx_valid  ;
+    assign Cm_valid = (rst_i             || ExCm_valid &&  ExCm_exc.valid                           ) ? 1'b0 : ExCm_valid  ;
 
     // instruction fetch
     logic [XLEN-1:0] npc        ;
@@ -83,11 +90,12 @@ module rei
     exc_s            Cm_exc     ;
     logic [XLEN-1:0] tvec       ;
 
-    assign npc = (       rst_i) ? RESET_VECTOR :
-                 (        eret) ? epc          :
-                 (Cm_exc.valid) ? tvec         :
-                 (    Cm_bmisp) ? ExCm_tkn_pc  :
-                                  pc + 4       ;
+    assign npc = (         rst_i) ? RESET_VECTOR :
+                 (          eret) ? epc          :
+                 (  Cm_exc.valid) ? tvec         :
+                 (      Cm_bmisp) ? ExCm_tkn_pc  :
+                 (frontend_stall) ? pc           :
+                                    pc + 4       ;
 
     always_ff @(posedge clk_i) pc <= npc;
 
@@ -135,21 +143,28 @@ module rei
         .csr_addr_o             (  Id_csr_addr          )  // output var logic     [11:0]
     );
 
-    logic [XLEN-1:0] Id_xrs1    ;
-    logic [XLEN-1:0] Id_xrs2    ;
-    logic            Cm_rf_we   ;
-    logic [XLEN-1:0] Cm_rslt    ;
+    logic            rf_ready_rst   ;
+    logic [XLEN-1:0] Id_xrs1        ;
+    logic [XLEN-1:0] Id_xrs2        ;
+    logic            Cm_rf_we       ;
+    logic [XLEN-1:0] Cm_rslt        ;
 
-    assign Cm_rf_we = Cm_valid && ExCm_rf_we;
+    assign rf_ready_rst = rst_i || Cm_bmisp || ExCm_valid && (ExCm_exc.valid || ExCm_mret)  ;
+    assign Cm_rf_we     = Cm_valid && ExCm_rf_we                                            ;
 
     regfile xregs (
         .clk_i                  (clk_i                  ), // input  var logic
+        .rst_i                  (rf_ready_rst           ), // input  var logic
+        .rd_i                   (  Id_rd                ), // input  var logic      [4:0]
         .rs1_i                  (  Id_rs1               ), // input  var logic      [4:0]
         .rs2_i                  (  Id_rs2               ), // input  var logic      [4:0]
+        .rd_ready_o             (  Id_rd_ready          ), // output var logic
+        .rs1_ready_o            (  Id_rs1_ready         ), // output var logic
+        .rs2_ready_o            (  Id_rs2_ready         ), // output var logic
         .xrs1_o                 (  Id_xrs1              ), // output var logic [XLEN-1:0]
         .xrs2_o                 (  Id_xrs2              ), // output var logic [XLEN-1:0]
         .we_i                   (  Cm_rf_we             ), // input  var logic
-        .rd_i                   (ExCm_rd                ), // input  var logic      [4:0]
+        .waddr_i                (ExCm_rd                ), // input  var logic      [4:0]
         .wdata_i                (  Cm_rslt              )  // input  var logic [XLEN-1:0]
     );
 
@@ -185,23 +200,12 @@ module rei
         .epc_o                  (epc                    )  // output var logic [XLEN-1:0]
     );
 
-    logic Id_fwd_rs1_Cm_to_Id   ;
-    logic Id_fwd_rs2_Cm_to_Id   ;
-    logic Id_fwd_rs1_Cm_to_Ex   ;
-    logic Id_fwd_rs2_Cm_to_Ex   ;
-    assign Id_fwd_rs1_Cm_to_Id  = ExCm_valid && ExCm_rf_we && (ExCm_rd == Id_rs1)   ;
-    assign Id_fwd_rs2_Cm_to_Id  = ExCm_valid && ExCm_rf_we && (ExCm_rd == Id_rs2)   ;
-    assign Id_fwd_rs1_Cm_to_Ex  = IdEx_valid && IdEx_rf_we && (IdEx_rd == Id_rs1)   ;
-    assign Id_fwd_rs2_Cm_to_Ex  = IdEx_valid && IdEx_rf_we && (IdEx_rd == Id_rs2)   ;
-
     logic [XLEN-1:0] Id_src1    ;
     logic [XLEN-1:0] Id_src2    ;
     assign Id_src1  = (Id_src1_ctrl.use_uimm) ? {{XLEN-5{1'b0}}, Id_rs1} :
                       (Id_src1_ctrl.use_pc  ) ?                  IfId_pc :
-                      (Id_fwd_rs1_Cm_to_Id  ) ?                  Cm_rslt :
                                                                  Id_xrs1 ;
     assign Id_src2  = (Id_src2_ctrl.use_imm ) ?                   Id_imm :
-                      (Id_fwd_rs2_Cm_to_Id  ) ?                  Cm_rslt :
                                                                  Id_xrs2 ;
 
     // exceptions
@@ -244,26 +248,19 @@ module rei
         IdEx_csr_rdata          <=   Id_csr_rdata       ;
         IdEx_rf_we              <=   Id_rf_we           ;
         IdEx_rd                 <=   Id_rd              ;
-        IdEx_fwd_rs1_Cm_to_Ex   <=   Id_fwd_rs1_Cm_to_Ex;
-        IdEx_fwd_rs2_Cm_to_Ex   <=   Id_fwd_rs2_Cm_to_Ex;
         IdEx_src1               <=   Id_src1            ;
         IdEx_src2               <=   Id_src2            ;
         IdEx_imm                <=   Id_imm             ;
     end
 
     // execution
-    logic [XLEN-1:0] Ex_src1    ;
-    logic [XLEN-1:0] Ex_src2    ;
-    assign Ex_src1  = (IdEx_fwd_rs1_Cm_to_Ex) ? Cm_rslt : IdEx_src1 ;
-    assign Ex_src2  = (IdEx_fwd_rs2_Cm_to_Ex) ? Cm_rslt : IdEx_src2 ;
-
     logic            Ex_tkn     ;
     logic [XLEN-1:0] Ex_tkn_pc  ;
     logic [XLEN-1:0] Ex_bru_rslt;
     bru bru (
         .bru_ctrl_i             (IdEx_bru_ctrl          ), // input  bru_ctrl_s
-        .src1_i                 (  Ex_src1              ), // input  var logic [XLEN-1:0]
-        .src2_i                 (  Ex_src2              ), // input  var logic [XLEN-1:0]
+        .src1_i                 (IdEx_src1              ), // input  var logic [XLEN-1:0]
+        .src2_i                 (IdEx_src2              ), // input  var logic [XLEN-1:0]
         .pc_i                   (IdEx_pc                ), // input  var logic [XLEN-1:0]
         .imm_i                  (IdEx_imm               ), // input  var logic [XLEN-1:0]
         .tkn_o                  (  Ex_tkn               ), // output var logic
@@ -274,8 +271,8 @@ module rei
     logic [XLEN-1:0] Ex_alu_rslt;
     alu alu (
         .alu_ctrl_i             (IdEx_alu_ctrl          ), // input  alu_ctrl_s
-        .src1_i                 (  Ex_src1              ), // input  var logic [XLEN-1:0]
-        .src2_i                 (  Ex_src2              ), // input  var logic [XLEN-1:0]
+        .src1_i                 (IdEx_src1              ), // input  var logic [XLEN-1:0]
+        .src2_i                 (IdEx_src2              ), // input  var logic [XLEN-1:0]
         .rslt_o                 (  Ex_alu_rslt          )  // output var logic [XLEN-1:0]
     );
 
@@ -283,7 +280,7 @@ module rei
     csralu csralu (
         .csr_ctrl_i             (IdEx_csr_ctrl          ), // input  csr_ctrl_s
         .csr_i                  (IdEx_csr_rdata         ), // input  var logic [XLEN-1:0]
-        .src1_i                 (  Ex_src1              ), // input  var logic [XLEN-1:0]
+        .src1_i                 (IdEx_src1              ), // input  var logic [XLEN-1:0]
         .rslt_o                 (  Ex_csr_rslt          )  // output var logic [XLEN-1:0]
     );
 
@@ -315,8 +312,8 @@ module rei
     lsu lsu (
         .clk_i                  (clk_i                  ), // input  var logic
         .lsu_ctrl_i             (IdEx_lsu_ctrl          ), // input  lsu_ctrl_s
-        .src1_i                 (  Ex_src1              ), // input  var logic [XLEN-1:0]
-        .src2_i                 (  Ex_src2              ), // input  var logic [XLEN-1:0]
+        .src1_i                 (IdEx_src1              ), // input  var logic [XLEN-1:0]
+        .src2_i                 (IdEx_src2              ), // input  var logic [XLEN-1:0]
         .imm_i                  (IdEx_imm               ), // input  var logic [XLEN-1:0]
         .dbus_if                (dbus_if                ), // dbus_if.mgr
         .rslt_o                 (  Cm_lsu_rslt          )  // output var logic [XLEN-1:0]

@@ -67,24 +67,24 @@ module decoder
                                 unique case ({ir[31:25], ir[11:7]})
                                     12'b000000000000: begin // ecall/ebreak
                                         unique case (ir[24:15])
-                                            10'b0000000000  : sys_ctrl_o.is_ecall   = 1'b1  ; // ecall
-                                            10'b0000100000  : sys_ctrl_o.is_ebreak  = 1'b1  ; // ebreak
-                                            default         : is_ill_insn_o         = 1'b1  ;
+                                            10'b0000000000  : begin insn_type.itype = 1'b1; sys_ctrl_o.is_ecall  = 1'b1; end // ecall
+                                            10'b0000100000  : begin insn_type.itype = 1'b1; sys_ctrl_o.is_ebreak = 1'b1; end // ebreak
+                                            default         : is_ill_insn_o = 1'b1;
                                         endcase
                                     end
                                     12'b001100000000: begin // mret
                                         if (ir[24:15] == 10'b0001000000) sys_ctrl_o.is_mret = 1'b1  ; // mret
                                         else                             is_ill_insn_o      = 1'b1  ;
                                     end
-                                    default         : is_ill_insn_o = 1'b1  ;
+                                    default : is_ill_insn_o = 1'b1;
                                 endcase
                             end
-                            3'b001  : begin                              csr_ctrl_o.is_csr = 1'b1; if (|ir[19:15]) csr_ctrl_o.is_write = 1'b1; else csr_ctrl_o.is_read = 1'b1; end // csrrw
-                            3'b010  : begin                              csr_ctrl_o.is_csr = 1'b1; if (|ir[19:15]) csr_ctrl_o.is_set   = 1'b1; else csr_ctrl_o.is_read = 1'b1; end // csrrs
-                            3'b011  : begin                              csr_ctrl_o.is_csr = 1'b1; if (|ir[19:15]) csr_ctrl_o.is_clear = 1'b1; else csr_ctrl_o.is_read = 1'b1; end // csrrc
-                            3'b101  : begin src1_ctrl_o.use_uimm = 1'b1; csr_ctrl_o.is_csr = 1'b1; if (|ir[19:15]) csr_ctrl_o.is_write = 1'b1; else csr_ctrl_o.is_read = 1'b1; end // csrrwi
-                            3'b110  : begin src1_ctrl_o.use_uimm = 1'b1; csr_ctrl_o.is_csr = 1'b1; if (|ir[19:15]) csr_ctrl_o.is_set   = 1'b1; else csr_ctrl_o.is_read = 1'b1; end // csrrsi
-                            3'b111  : begin src1_ctrl_o.use_uimm = 1'b1; csr_ctrl_o.is_csr = 1'b1; if (|ir[19:15]) csr_ctrl_o.is_clear = 1'b1; else csr_ctrl_o.is_read = 1'b1; end // csrrci
+                            3'b001  : begin insn_type.itype = 1'b1;                              csr_ctrl_o.is_csr = 1'b1; if (|ir[19:15]) csr_ctrl_o.is_write = 1'b1; else csr_ctrl_o.is_read = 1'b1; end // csrrw
+                            3'b010  : begin insn_type.itype = 1'b1;                              csr_ctrl_o.is_csr = 1'b1; if (|ir[19:15]) csr_ctrl_o.is_set   = 1'b1; else csr_ctrl_o.is_read = 1'b1; end // csrrs
+                            3'b011  : begin insn_type.itype = 1'b1;                              csr_ctrl_o.is_csr = 1'b1; if (|ir[19:15]) csr_ctrl_o.is_clear = 1'b1; else csr_ctrl_o.is_read = 1'b1; end // csrrc
+                            3'b101  : begin insn_type.itype = 1'b1; src1_ctrl_o.use_uimm = 1'b1; csr_ctrl_o.is_csr = 1'b1; if (|ir[19:15]) csr_ctrl_o.is_write = 1'b1; else csr_ctrl_o.is_read = 1'b1; end // csrrwi
+                            3'b110  : begin insn_type.itype = 1'b1; src1_ctrl_o.use_uimm = 1'b1; csr_ctrl_o.is_csr = 1'b1; if (|ir[19:15]) csr_ctrl_o.is_set   = 1'b1; else csr_ctrl_o.is_read = 1'b1; end // csrrsi
+                            3'b111  : begin insn_type.itype = 1'b1; src1_ctrl_o.use_uimm = 1'b1; csr_ctrl_o.is_csr = 1'b1; if (|ir[19:15]) csr_ctrl_o.is_clear = 1'b1; else csr_ctrl_o.is_read = 1'b1; end // csrrci
                             default : is_ill_insn_o = 1'b1  ;
                         endcase
                     end
